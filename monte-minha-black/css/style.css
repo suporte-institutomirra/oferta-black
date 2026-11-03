@@ -1,0 +1,114 @@
+/* Cores — troque aqui para a identidade da sua marca */
+:root {
+  --fundo: #0f0d0b;
+  --card: #1a1714;
+  --texto: #f3ede4;
+  --suave: #a89f92;
+  --destaque: #d9a441;   /* dourado */
+  --linha: #2e2924;
+  --raio: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font: 16px/1.6 "Inter", system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+#app { width: 100%; max-width: 620px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 36px 28px;
+}
+h1, h2, h4 { font-family: "Fraunces", serif; line-height: 1.2; }
+h1 { font-size: clamp(28px, 6vw, 40px); margin: 12px 0 18px; }
+h1 em { color: var(--destaque); }
+h2 { font-size: 24px; margin-bottom: 8px; }
+h3 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--destaque); margin: 36px 0 14px; }
+h4 { font-size: 20px; margin: 4px 0 8px; }
+
+.selo { font-size: 12px; letter-spacing: .16em; color: var(--destaque); font-weight: 700; }
+.abertura ul { margin: 14px 0 28px; padding-left: 20px; }
+.abertura li { margin: 6px 0; }
+.assina { margin-top: 20px; color: var(--suave); font-style: italic; }
+
+.btn {
+  display: inline-block;
+  background: var(--destaque);
+  color: #1a1408;
+  font: 700 16px "Inter", sans-serif;
+  border: 0; border-radius: 999px;
+  padding: 14px 30px;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn-cta { background: transparent; color: var(--destaque); border: 2px solid var(--destaque); }
+
+/* perguntas */
+.barra { height: 4px; background: var(--linha); border-radius: 4px; overflow: hidden; }
+.barra span { display: block; height: 100%; background: var(--destaque); transition: width .3s; }
+.contador { font-size: 13px; color: var(--suave); margin: 10px 0 20px; }
+.ajuda { color: var(--suave); margin-bottom: 18px; }
+
+input, textarea {
+  width: 100%;
+  background: var(--fundo);
+  color: var(--texto);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+  padding: 14px;
+  font: 16px "Inter", sans-serif;
+}
+input:focus, textarea:focus { outline: 2px solid var(--destaque); border-color: transparent; }
+
+.opcoes { display: grid; gap: 10px; }
+.opcao {
+  text-align: left;
+  background: var(--fundo);
+  color: var(--texto);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font: 15px "Inter", sans-serif;
+  cursor: pointer;
+}
+.opcao:hover, .opcao.marcada { border-color: var(--destaque); }
+
+.erro { color: #ff8a7a; min-height: 22px; margin-top: 8px; font-size: 14px; }
+.nav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.voltar { background: none; border: 0; color: var(--suave); cursor: pointer; font-size: 15px; }
+
+/* resultado */
+.numeros { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.numeros div { background: var(--fundo); border: 1px solid var(--linha); border-radius: 12px; padding: 14px; }
+.numeros strong { display: block; font-size: 24px; color: var(--destaque); }
+.numeros span { font-size: 13px; color: var(--suave); }
+.nota { color: var(--suave); font-size: 14px; margin-top: 12px; }
+
+.campanha, .msg { border: 1px solid var(--linha); border-radius: 12px; padding: 18px; margin-bottom: 12px; }
+.num { font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .1em; }
+.porque { font-size: 14px; color: var(--suave); margin-top: 8px; }
+.exemplo { margin-top: 10px; padding-left: 12px; border-left: 3px solid var(--destaque); font-style: italic; }
+pre { white-space: pre-wrap; font: 15px/1.6 "Inter", sans-serif; margin: 8px 0 12px; }
+.copiar { background: none; border: 1px solid var(--linha); color: var(--texto); border-radius: 999px; padding: 6px 16px; cursor: pointer; }
+
+.acoes { display: grid; gap: 12px; margin-top: 32px; }
+.rodape { margin-top: 28px; font-size: 12px; color: var(--suave); text-align: center; }
+
+/* PDF (Ctrl+P / botão Baixar PDF) — fundo branco, sem botões */
+@media print {
+  body { background: #fff; color: #111; padding: 0; }
+  .card { background: #fff; border: 0; padding: 0; }
+  .numeros div, .campanha, .msg { background: #fff; border-color: #ddd; break-inside: avoid; }
+  .copiar, .acoes { display: none !important; }
+  .porque, .nota, .numeros span, .rodape { color: #555; }
+}
