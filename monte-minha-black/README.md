@@ -1,58 +1,78 @@
-# Monte a sua Black Friday (sem baixar o preço)
+# Monte a sua Black Friday · Instituto Mirra
 
-Quiz que faz 12 perguntas e entrega um plano de Black Friday: 3 campanhas, 3 mensagens prontas, a conta de vendas e PDF. As respostas ficam salvas no Supabase.
-
-HTML + CSS + JavaScript puro. Sem instalar nada, sem build.
+Ferramenta paga. A compradora entra com o e-mail da compra na Kiwify, responde 13 perguntas e recebe:
+calendário dia a dia, 3 ideias de campanha, a oferta escrita, 9 mensagens (clientes e novas),
+stories e 6 roteiros de reels, checklist e a meta em números. Tudo fica salvo na conta dela.
 
 ## Pastas
 
 ```
 monte-minha-black/
-├── index.html            ← a página
-├── vercel.json           ← configuração da Vercel
-├── css/
-│   └── style.css         ← cores e visual (mude as cores no topo)
+├── index.html
+├── vercel.json
+├── package.json            ← só avisa a Vercel que o webhook usa JavaScript moderno
+├── api/
+│   └── kiwify.js           ← recebe a venda da Kiwify e libera/bloqueia o acesso
+├── css/style.css
 ├── js/
-│   ├── config.js         ← SUA CONFIGURAÇÃO (Supabase, marca, link do botão)
-│   ├── perguntas.js      ← as perguntas
-│   ├── campanhas.js      ← textos das campanhas e mensagens
-│   └── app.js            ← motor das telas (não precisa mexer)
+│   ├── config.js           ← SUA CONFIGURAÇÃO
+│   ├── perguntas.js        ← as perguntas
+│   ├── campanhas.js        ← todos os textos (ideias, oferta, mensagens, reels, calendário)
+│   └── app.js              ← login, telas e salvamento (não precisa mexer)
 └── supabase/
-    └── schema.sql        ← cole no Supabase para criar a tabela
+    ├── schema.sql          ← cole no Supabase
+    └── email-link.html     ← e-mail de acesso em português
 ```
 
-## Passo a passo
+## Configuração (uma vez só)
 
-### 1. Supabase (banco)
-1. Crie conta em supabase.com → **New project**.
-2. Menu **SQL Editor** → **New query** → cole o conteúdo de `supabase/schema.sql` → **Run**.
-3. Menu **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
-4. Cole as duas em `js/config.js`.
+### 1. Supabase
+1. **SQL Editor → New query** → cole `supabase/schema.sql` → **Run**.
+2. **Authentication → URL Configuration**
+   - Site URL: `https://SEU-SITE.vercel.app`
+   - Redirect URLs: adicione `https://SEU-SITE.vercel.app/**`
+3. **Authentication → Emails → Magic Link**: assunto `Seu acesso ao Monte a sua Black` e cole o conteúdo de `supabase/email-link.html`.
+4. **Importante — envio de e-mails:** o envio padrão do Supabase manda poucos e-mails por hora (serve só para teste).
+   Antes de vender, configure um SMTP próprio em **Authentication → Emails → SMTP Settings**.
+   O mais simples é o **Resend** (resend.com, tem plano grátis): crie a conta, verifique o seu domínio e cole os dados de SMTP lá.
+5. **Project Settings → API**: copie a **Project URL**, a chave **anon public** e a chave **service_role** (esta é secreta).
 
-> A chave anon pode ficar no site: o banco só deixa visitantes **inserir**. Ninguém lê as respostas além de você.
+### 2. `js/config.js`
+Preencha `SUPABASE_URL`, `SUPABASE_ANON_KEY` (a **anon**, nunca a service_role), `LINK_COMPRA`, `SUPORTE` e `CTA_PAGINA_LINK`.
 
-### 2. GitHub
-1. github.com → **New repository** → nome `monte-minha-black` → Create.
-2. **Add file → Upload files** → arraste o conteúdo desta pasta (as pastas `css`, `js`, `supabase` e os arquivos soltos) → **Commit changes**.
+### 3. Vercel
+**Settings → Environment Variables** → adicione:
 
-### 3. Vercel (no ar)
-1. vercel.com → **Sign Up → Continue with GitHub**.
-2. **Add New… → Project** → ao lado do repositório `monte-minha-black`, clique **Import**.
-3. Framework Preset: **Other**. Não mude mais nada → **Deploy**.
-4. O endereço fica `monte-minha-black.vercel.app`. Domínio próprio: **Settings → Domains**.
+| Nome | Valor |
+|---|---|
+| `SUPABASE_URL` | a Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | a chave service_role |
+| `KIWIFY_TOKEN` | o token do webhook (passo 4) |
 
-Toda vez que você editar um arquivo no GitHub, a Vercel atualiza sozinha.
+Depois: **Deployments → ⋯ → Redeploy**.
 
-## Testar
-- `seusite.vercel.app/?demo` → mostra o resultado direto, com respostas de exemplo (não salva no banco).
-- Abra o `index.html` no navegador para testar no seu computador.
+### 4. Kiwify
+1. **Apps → Webhooks → Criar webhook**
+   - URL: `https://SEU-SITE.vercel.app/api/kiwify`
+   - Produto: o Monte a sua Black
+   - Eventos: **Compra aprovada**, **Reembolso**, **Chargeback**
+2. Copie o **token** que a Kiwify mostra e cole em `KIWIFY_TOKEN` na Vercel (e faça Redeploy).
+3. No produto, em entrega/área de membros, coloque o link do app (`https://SEU-SITE.vercel.app`) para a compradora receber no e-mail da compra.
 
-## Ver as respostas
-Supabase → **Table Editor → respostas**. Para planilha: botão **Export → CSV**.
-No final do `schema.sql` tem consultas prontas (ex.: quem não tem página de vendas).
+### 5. Testar
+- Abra `https://SEU-SITE.vercel.app/api/kiwify` → deve aparecer "Webhook da Kiwify ativo."
+- Libere o seu e-mail na mão (SQL Editor):
+  `insert into compradores (email, status) values ('seu@email.com','manual');`
+- Entre no app com esse e-mail.
+- Faça uma compra teste na Kiwify (ou cupom 100%) e veja o e-mail aparecer em **Table Editor → compradores**.
+
+## Dia a dia
+- **Compradoras:** Table Editor → `compradores` (ativo = true/false).
+- **Liberar ou bloquear na mão:** consultas prontas no final do `schema.sql`.
+- **Testar sem login:** em `js/config.js`, `MODO_TESTE: true` e abra `index.html?demo`. **Volte para `false` antes de subir.**
 
 ## Personalizar
-- **Nova pergunta**: copie um bloco em `js/perguntas.js`. Ela é salva automaticamente na coluna `respostas` (JSON).
-- **Nova campanha**: crie em `OFERTAS` e coloque a chave em `TRILHAS` (`js/campanhas.js`).
-- **Cores**: topo do `css/style.css`.
-- **Rastrear origem**: divulgue `seusite.vercel.app/?utm_source=instagram` — aparece na coluna `origem`.
+- **Textos:** `js/campanhas.js` (cada bloco tem um título explicando o que é).
+- **Perguntas:** `js/perguntas.js`.
+- **Tarefas do calendário:** lista `TAREFAS` em `js/campanhas.js` (`off: -7` = 7 dias antes da abertura).
+- **Cores:** topo do `css/style.css`.

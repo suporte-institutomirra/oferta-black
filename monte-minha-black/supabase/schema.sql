@@ -1,83 +1,113 @@
 -- ============================================================
--- Monte a sua Black · banco de dados (Supabase / Postgres)
+-- Monte a sua Black · Instituto Mirra · banco de dados (Supabase)
 -- Como usar: Supabase > SQL Editor > New query > cole tudo > Run
+-- Pode rodar de novo sem problema (não apaga nada).
 -- ============================================================
 
-create extension if not exists pgcrypto;
-
-create table if not exists public.respostas (
-  id                   uuid primary key default gen_random_uuid(),
-  criado_em            timestamptz not null default now(),
-
-  -- diagnóstico
-  nome                 text,
-  vende                text,
-  tipo_negocio         text,
-  carro_chefe          text,
-  encostado            text,
-  ticket               text,
-  meta                 text,
-  conversao            text,
-  ponto_fraco          text,
-
-  -- contato / qualificação
-  instagram            text,
-  whatsapp             text,
-  pagina_vendas        text,
-
-  -- o que o app entregou
-  campanhas_entregues  text[] not null default '{}',
-
-  -- cópia de tudo que foi respondido (se você criar perguntas novas, elas caem aqui)
-  respostas            jsonb not null default '{}'::jsonb,
-  origem               text,           -- ex.: utm_source=instagram
-
-  -- travas contra lixo / abuso
-  constraint nome_tam   check (char_length(coalesce(nome,''))        <= 60),
-  constraint vende_tam  check (char_length(coalesce(vende,''))       <= 120),
-  constraint carro_tam  check (char_length(coalesce(carro_chefe,'')) <= 120),
-  constraint enc_tam    check (char_length(coalesce(encostado,''))   <= 120),
-  constraint insta_tam  check (char_length(coalesce(instagram,''))   <= 60),
-  constraint whats_tam  check (char_length(coalesce(whatsapp,''))    <= 20),
-  constraint json_tam   check (pg_column_size(respostas)             <= 20000)
+-- ------------------------------------------------------------
+-- 1) COMPRADORES — quem pode entrar no app
+--    Preenchida automaticamente pela Kiwify (api/kiwify.js).
+--    Ninguém de fora lê esta tabela.
+-- ------------------------------------------------------------
+create table if not exists public.compradores (
+  email          text primary key check (email = lower(email)),
+  ativo          boolean not null default true,     -- false = reembolso/chargeback
+  status         text,                              -- paid, refunded, chargedback, manual
+  pedido_id      text,
+  produto        text,
+  nome           text,
+  criado_em      timestamptz not null default now(),
+  atualizado_em  timestamptz not null default now()
 );
 
-create index if not exists respostas_criado_em_idx on public.respostas (criado_em desc);
+alter table public.compradores enable row level security;
+-- (sem policies de propósito: só o webhook, com a chave secreta, escreve aqui)
+
 
 -- ------------------------------------------------------------
--- Segurança (RLS)
--- Visitante do site: só pode ENVIAR respostas.
--- Ninguém de fora consegue LER, EDITAR ou APAGAR.
--- Você vê tudo no painel do Supabase (Table Editor > respostas).
+-- 2) PLANOS — as respostas e o progresso de cada compradora
 -- ------------------------------------------------------------
-alter table public.respostas enable row level security;
+create table if not exists public.planos (
+  user_id        uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  dados          jsonb not null default '{}'::jsonb,
+  atualizado_em  timestamptz not null default now(),
+  constraint dados_tam check (pg_column_size(dados) <= 60000)
+);
 
-drop policy if exists "visitante envia respostas" on public.respostas;
-create policy "visitante envia respostas"
-  on public.respostas
-  for insert
-  to anon
-  with check (true);
+alter table public.planos enable row level security;
 
--- (sem policy de select/update/delete, de propósito)
+
+-- ------------------------------------------------------------
+-- 3) FUNÇÕES DE ACESSO
+-- ------------------------------------------------------------
+
+-- Usada na tela de login: "esse e-mail comprou?"
+create or replace function public.email_tem_acesso(p_email text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.compradores
+    where email = lower(trim(p_email)) and ativo
+  );
+$$;
+
+-- Usada depois do login: "a pessoa logada tem acesso?"
+create or replace function public.tem_acesso()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.compradores
+    where email = lower(auth.jwt() ->> 'email') and ativo
+  );
+$$;
+
+revoke all on function public.email_tem_acesso(text) from public;
+revoke all on function public.tem_acesso() from public;
+grant execute on function public.email_tem_acesso(text) to anon, authenticated;
+grant execute on function public.tem_acesso() to authenticated;
+
+
+-- ------------------------------------------------------------
+-- 4) REGRAS: cada compradora só vê e edita o próprio plano,
+--    e só enquanto o acesso estiver ativo.
+-- ------------------------------------------------------------
+drop policy if exists "dona le o plano"     on public.planos;
+drop policy if exists "dona cria o plano"   on public.planos;
+drop policy if exists "dona edita o plano"  on public.planos;
+
+create policy "dona le o plano" on public.planos
+  for select to authenticated
+  using (user_id = auth.uid() and public.tem_acesso());
+
+create policy "dona cria o plano" on public.planos
+  for insert to authenticated
+  with check (user_id = auth.uid() and public.tem_acesso());
+
+create policy "dona edita o plano" on public.planos
+  for update to authenticated
+  using (user_id = auth.uid() and public.tem_acesso())
+  with check (user_id = auth.uid() and public.tem_acesso());
 
 
 -- ============================================================
--- Consultas úteis (cole no SQL Editor quando quiser)
+-- USO NO DIA A DIA (cole no SQL Editor quando precisar)
 -- ============================================================
 
--- Últimas respostas
--- select criado_em, nome, vende, tipo_negocio, instagram, whatsapp, pagina_vendas
--- from public.respostas order by criado_em desc limit 50;
+-- Liberar alguém na mão (cortesia, parceira, teste):
+-- insert into public.compradores (email, status) values ('email@exemplo.com', 'manual')
+-- on conflict (email) do update set ativo = true, atualizado_em = now();
 
--- Leads mais quentes: quem NÃO tem página de vendas
--- select nome, vende, instagram, whatsapp from public.respostas
--- where pagina_vendas = 'Não tenho' order by criado_em desc;
+-- Bloquear alguém na mão:
+-- update public.compradores set ativo = false, atualizado_em = now() where email = 'email@exemplo.com';
 
--- Maior ponto fraco do seu público
--- select ponto_fraco, count(*) from public.respostas group by 1 order by 2 desc;
+-- Quantas compradoras e quantas já montaram o plano:
+-- select
+--   (select count(*) from public.compradores where ativo)       as compradoras_ativas,
+--   (select count(*) from public.planos where dados ? 'respostas') as comecaram,
+--   (select count(*) from public.planos where (dados->>'concluido')::boolean) as terminaram;
 
--- Tipos de negócio que mais responderam
--- select tipo_negocio, count(*) from public.respostas group by 1 order by 2 desc;
-
--- Exportar tudo: Table Editor > respostas > botão "Export" > CSV
+-- O que as compradoras vendem (ótimo para ideias de conteúdo):
+-- select dados->'respostas'->>'vende' as vende, dados->'respostas'->>'tipo_negocio' as tipo
+-- from public.planos order by atualizado_em desc;
