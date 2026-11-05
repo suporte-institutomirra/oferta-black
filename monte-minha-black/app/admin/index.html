@@ -51,6 +51,15 @@
     .acao button.perigo { border-color: rgba(224, 122, 106, .5); color: #e07a6a; }
     .acao button.confirma { background: #e07a6a; color: #1a0f0a; border-color: #e07a6a; }
     .acao button.libera { border-color: var(--nude); color: var(--nude); }
+    .acao { white-space: nowrap; }
+    .acao .mais { display: flex; gap: 12px; margin-top: 8px; }
+    .acao .mais button { border: 0; padding: 2px 0; background: none; color: var(--nude); text-decoration: underline; text-underline-offset: 3px; font: 600 12px Montserrat, sans-serif; }
+    .troca { display: flex; flex-direction: column; gap: 6px; }
+    .troca input { width: 100%; min-width: 210px; background: var(--fundo); border: 1px solid var(--nude); border-radius: 10px; color: var(--texto); font: 500 14px Montserrat, sans-serif; padding: 10px 12px; }
+    .troca .bts { display: flex; gap: 8px; }
+    .troca .bts button { border-radius: 10px; padding: 8px 12px; font: 600 12px Montserrat, sans-serif; cursor: pointer; border: 1px solid var(--linha); background: none; color: var(--texto); }
+    .troca .bts .salva { background: var(--nude); color: #1a0f0a; border-color: var(--nude); }
+    .troca small { color: var(--suave); font-size: 11.5px; }
     .vazio { text-align: center; color: var(--suave); padding: 30px 10px; }
     @media (max-width: 760px) {
       .kpis { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -81,7 +90,11 @@
   const ORIGEM = { paid: "Compra Kiwify", order_approved: "Compra Kiwify", manual: "Liberada manualmente", bloqueado: "Bloqueada pelo admin", refunded: "Reembolso", chargedback: "Chargeback", chargeback: "Chargeback" };
 
   const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-  let alunas = [], filtro = "todas", termo = "", eu = null;
+  let alunas = [], filtro = "todas", termo = "", eu = null, editando = null;
+  // cliente separado só para ENVIAR links às alunas (não mexe na sessão do admin)
+  const sbEnvio = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, flowType: "implicit", storageKey: "mmb-envio" },
+  });
 
   function telaLogin(msg) {
     app.innerHTML = `
@@ -156,12 +169,16 @@
         ? `<button class="perigo" data-bloq="${esc(a.email)}">Bloquear</button>`
         : `<button class="libera" data-lib="${esc(a.email)}" data-nome="${esc(a.nome || "")}">${s === "exp" ? "Renovar 1 ano" : "Liberar"}</button>`;
       return `<tr>
-        <td data-l="Aluna"><div class="nome">${esc(a.nome || "Sem nome")}</div><div class="email">${esc(a.email)}</div></td>
+        <td data-l="Aluna"><div class="nome">${esc(a.nome || "Sem nome")}</div>${editando === a.email
+          ? `<div class="troca"><input id="novo-email" type="email" value="${esc(a.email)}" autocomplete="off">
+              <small>O prazo de acesso continua o mesmo.</small>
+              <div class="bts"><button class="salva" data-salvar="${esc(a.email)}">Salvar e-mail</button><button data-cancelar>Cancelar</button></div></div>`
+          : `<div class="email">${esc(a.email)}</div>`}</td>
         <td data-l="Compra">${dataBR(a.criado_em)}</td>
         <td data-l="Status">${tag}<span class="origem">${esc(ORIGEM[a.status] || a.status || "")}</span></td>
         <td data-l="Acesso">${prazoHtml(a)}</td>
         <td data-l="Uso">${uso}</td>
-        <td class="acao">${botao}</td>
+        <td class="acao">${botao}<div class="mais">${s === "ativa" ? `<button data-reenviar="${esc(a.email)}">Reenviar acesso</button>` : ""}<button data-trocar="${esc(a.email)}">Trocar e-mail</button></div></td>
       </tr>`;
     }).join("");
 
@@ -207,6 +224,11 @@
       await liberar(email, nome);
     };
     document.querySelectorAll("[data-lib]").forEach((b) => (b.onclick = () => liberar(b.dataset.lib, b.dataset.nome)));
+    document.querySelectorAll("[data-trocar]").forEach((b) => (b.onclick = () => { editando = b.dataset.trocar; painel(); const i = $("#novo-email"); if (i) { i.focus(); i.select(); } }));
+    document.querySelectorAll("[data-cancelar]").forEach((b) => (b.onclick = () => { editando = null; painel(); }));
+    document.querySelectorAll("[data-salvar]").forEach((b) => (b.onclick = () => trocarEmail(b.dataset.salvar, $("#novo-email").value)));
+    const ne = $("#novo-email"); if (ne) ne.onkeydown = (e) => { if (e.key === "Enter") trocarEmail(editando, ne.value); if (e.key === "Escape") { editando = null; painel(); } };
+    document.querySelectorAll("[data-reenviar]").forEach((b) => (b.onclick = () => reenviar(b.dataset.reenviar, b)));
     document.querySelectorAll("[data-bloq]").forEach((b) => (b.onclick = async () => {
       if (!b.classList.contains("confirma")) { b.classList.add("confirma"); b.textContent = "Confirmar bloqueio"; setTimeout(() => { if (b.isConnected) { b.classList.remove("confirma"); b.textContent = "Bloquear"; } }, 4000); return; }
       b.disabled = true;
@@ -220,6 +242,24 @@
     const { error } = await sb.rpc("admin_liberar", { p_email: email, p_nome: nome || null });
     if (error) return mensagem("Não consegui liberar agora.", true);
     await carregar(); mensagem(`Acesso liberado para ${email} por 365 dias.`);
+  }
+
+  async function trocarEmail(antigo, novo) {
+    novo = String(novo || "").trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(novo)) return mensagem("Digite um e-mail válido.", true);
+    if (novo === antigo) { editando = null; return painel(); }
+    const { error } = await sb.rpc("admin_trocar_email", { p_antigo: antigo, p_novo: novo });
+    if (error) return mensagem(/cadastrado/.test(error.message) ? `${novo} já está cadastrado em outra aluna.` : "Não consegui trocar o e-mail agora.", true);
+    editando = null; await carregar();
+    mensagem(`E-mail trocado: ${antigo} → ${novo}. Quer mandar o acesso para o e-mail novo? Use "Reenviar acesso".`);
+  }
+
+  async function reenviar(email, botao) {
+    if (botao) { botao.disabled = true; botao.textContent = "Enviando…"; }
+    const { error } = await sbEnvio.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/app/", shouldCreateUser: true } });
+    if (botao) { botao.disabled = false; botao.textContent = "Reenviar acesso"; }
+    if (error) return mensagem(/rate|limit|seconds/i.test(error.message) ? "Muitos envios seguidos. Espere 1 minuto e tente de novo." : "Não consegui enviar o acesso agora.", true);
+    mensagem(`Link de acesso enviado para ${email}. Ele vale por 1 hora.`);
   }
 
   function mensagem(t, erro) { const m = $("#msg"); if (m) { m.textContent = t; m.className = "adm-msg " + (erro ? "erro" : "ok"); } }
