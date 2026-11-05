@@ -138,9 +138,11 @@ function telaLogin(msg) {
         <h2>Confira o seu e-mail</h2>
         <p class="ajuda">Enviamos um link de acesso para <b>${esc(email)}</b>. Abra o e-mail <b>neste mesmo aparelho</b> e toque em entrar.</p>
         <p class="nota">Não chegou em 2 minutos? Olhe a caixa de spam e promoções.</p>
-        <div class="nav"><button class="voltar" id="outro">← Usar outro e-mail</button></div>
+        <p class="nota"><b>O link vale por 1 hora.</b> Se passar desse tempo, é só pedir um novo aqui.</p>
+        <div class="nav"><button class="voltar" id="outro">← Usar outro e-mail</button><button class="voltar" id="novo">Pedir um novo link</button></div>
       </section>`;
     $("#outro").onclick = () => telaLogin();
+    $("#novo").onclick = () => { telaLogin(); $("#email").value = email; };
 
     function falha(t) {
       botao.disabled = false; botao.textContent = "Receber link de acesso";
