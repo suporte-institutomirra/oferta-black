@@ -53,7 +53,23 @@ export async function POST(request) {
     return new Response("Outro produto, ignorado.", { status: 200 });
   }
 
-  // 3) Grava no Supabase (cria ou atualiza pelo e-mail)
+  // 3a) Reembolso/chargeback: bloqueia pelo número do pedido
+  //     (funciona mesmo se o admin trocou o e-mail da aluna)
+  if (ativo === false && ev.order_id) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/compradores?pedido_id=eq.${encodeURIComponent(ev.order_id)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({ ativo: false, status: status || tipo, atualizado_em: new Date().toISOString() }),
+    });
+    if (r.ok && (await r.json()).length) return new Response("Acesso bloqueado.", { status: 200 });
+  }
+
+  // 3b) Grava no Supabase (cria ou atualiza pelo e-mail)
   const res = await fetch(`${SUPABASE_URL}/rest/v1/compradores?on_conflict=email`, {
     method: "POST",
     headers: {
