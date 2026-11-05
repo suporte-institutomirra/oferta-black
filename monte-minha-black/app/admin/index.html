@@ -102,7 +102,8 @@
       $("#b").disabled = true; $("#b").textContent = "Enviando…";
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/app/admin/", shouldCreateUser: true } });
       if (error) { $("#b").disabled = false; $("#b").textContent = "Receber link de acesso"; $("#m").innerHTML = `<p class="erro">Não consegui enviar o link. Espere 1 minuto e tente de novo.</p>`; return; }
-      app.innerHTML = `<section class="card"><h2>Confira o seu e-mail</h2><p class="ajuda">Enviamos o link para <b>${esc(email)}</b>. Abra neste mesmo aparelho.</p></section>`;
+      app.innerHTML = `<section class="card"><h2>Confira o seu e-mail</h2><p class="ajuda">Enviamos o link para <b>${esc(email)}</b>. Abra neste mesmo aparelho.</p><p class="nota"><b>O link vale por 1 hora.</b> Se passar desse tempo, é só pedir um novo aqui.</p><div class="nav"><button class="voltar" id="novo">Pedir um novo link</button></div></section>`;
+      $("#novo").onclick = () => { telaLogin(); $("#email").value = email; };
     };
   }
 
