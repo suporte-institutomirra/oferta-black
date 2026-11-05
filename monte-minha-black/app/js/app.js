@@ -34,6 +34,7 @@ let diaSel = null;      // dia aberto no calendário
 let planoAberto = false; // "ver o plano inteiro"
 let atrasoAberto = false;
 let copias = [];
+let souAdmin = false;
 
 function novoPlano() {
   return { respostas: {}, passo: 0, escolha: null, feitas: {}, checklist: {}, concluido: false, inicio: null };
@@ -148,12 +149,22 @@ function telaLogin(msg) {
   };
 }
 
-function telaSemAcesso() {
+async function telaSemAcesso() {
+  let expirou = null;
+  try {
+    const { data } = await sb.rpc("meu_acesso");
+    const a = Array.isArray(data) ? data[0] : data;
+    if (a && a.ativo && a.expira_em && new Date(a.expira_em) <= new Date()) expirou = new Date(a.expira_em);
+  } catch {}
+  const texto = expirou
+    ? `<h2>Seu acesso de 1 ano terminou</h2>
+      <p class="ajuda">O acesso de <b>${esc(usuario.email)}</b> ao ${esc(CONFIG.PRODUTO)} foi válido por 365 dias e terminou em <b>${expirou.toLocaleDateString("pt-BR")}</b>.</p>`
+    : `<h2>Seu acesso não está ativo</h2>
+      <p class="ajuda">Entramos com <b>${esc(usuario.email)}</b>, mas não há uma compra ativa com esse e-mail.</p>`;
   app.innerHTML = `
     <section class="card">
       <div class="topo"><p class="selo">ACESSO</p>${ETIQUETA}</div>
-      <h2>Seu acesso não está ativo</h2>
-      <p class="ajuda">Entramos com <b>${esc(usuario.email)}</b>, mas não há uma compra ativa com esse e-mail.</p>
+      ${texto}
       <div class="acoes">
         <a class="btn" href="${esc(CONFIG.LINK_COMPRA)}" target="_blank" rel="noopener">Garantir o meu acesso</a>
         <a class="btn btn-cta" href="${esc(CONFIG.SUPORTE)}" target="_blank" rel="noopener">Falar com o suporte</a>
@@ -170,6 +181,7 @@ async function entrar(user) {
   const { data: ok, error } = await sb.rpc("tem_acesso");
   if (error) { app.innerHTML = `<section class="card"><p class="erro">Não consegui carregar. Recarregue a página.</p></section>`; return; }
   if (!ok) return telaSemAcesso();
+  try { const { data: adm } = await sb.rpc("sou_admin"); souAdmin = !!adm; } catch { souAdmin = false; }
   try { plano = (await carregarPlano()) || novoPlano(); } catch { plano = novoPlano(); }
   iniciar();
 }
@@ -335,7 +347,7 @@ function resultado(imprimir) {
           ${CONFIG.MODO_TESTE ? "" : `<button class="voltar" id="sair">Sair</button>`}
         </div>
       </div>
-      <p class="rodape">${esc(CONFIG.PRODUTO)} · Ferramenta ${esc(CONFIG.MARCA)} · <a href="${esc(CONFIG.SUPORTE)}" target="_blank" rel="noopener">Suporte</a></p>
+      <p class="rodape">${esc(CONFIG.PRODUTO)} · Ferramenta ${esc(CONFIG.MARCA)} · <a href="${esc(CONFIG.SUPORTE)}" target="_blank" rel="noopener">Suporte</a>${souAdmin ? ` · <a href="/app/admin/">Área admin</a>` : ""}</p>
     </section>`;
 
   $("#baixar").onclick = () => { resultado(true); setTimeout(() => window.print(), 300); };
