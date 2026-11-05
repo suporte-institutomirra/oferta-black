@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · Monte a sua Black</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Playfair+Display:ital,wght@1,400;1,500&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app/css/style.css">
+  <style>
+    #app { max-width: 1080px; }
+    .adm-topo { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+    .adm-topo h1 { font-size: clamp(34px, 6vw, 52px); margin: 6px 0 0; }
+    .adm-topo .voltar { white-space: nowrap; }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .kpi { background: var(--campo); border: 1px solid var(--linha); border-radius: var(--raio); padding: 18px 20px; }
+    .kpi b { display: block; font: 400 44px/1 "Anton", sans-serif; color: var(--texto); }
+    .kpi span { display: block; margin-top: 8px; font-size: 13px; color: var(--suave); }
+    .kpi.destaque { border-color: var(--bordo); background: rgba(112, 12, 12, .22); }
+    .kpi.destaque b { color: var(--nude); }
+    .liberar { display: grid; grid-template-columns: 1.3fr 1fr auto; gap: 10px; margin: 0 0 6px; }
+    .liberar input, .busca { width: 100%; background: var(--campo); border: 1px solid var(--linha); border-radius: 12px; color: var(--texto); font: 500 15px Montserrat, sans-serif; padding: 14px 16px; }
+    .liberar .btn { padding: 14px 22px; white-space: nowrap; }
+    .adm-msg { min-height: 22px; font-size: 13.5px; margin: 6px 0 16px; background: none; border: 0; padding: 0; }
+    .adm-msg.ok { color: #8fd19e; } .adm-msg.erro { color: #e07a6a; }
+    .barra-busca { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .busca { flex: 1; min-width: 200px; }
+    .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filtros button { background: none; border: 1px solid var(--linha); color: var(--suave); border-radius: 999px; padding: 9px 14px; font: 600 12.5px Montserrat, sans-serif; cursor: pointer; }
+    .filtros button.on { background: var(--nude); color: #1a0f0a; border-color: var(--nude); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font: 600 11px Montserrat, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); padding: 10px 10px; border-bottom: 1px solid var(--linha); }
+    td { padding: 14px 10px; border-bottom: 1px solid rgba(189, 148, 119, .1); vertical-align: middle; }
+    td .nome { font-weight: 600; color: var(--texto); }
+    td .email { color: var(--suave); font-size: 13px; word-break: break-all; }
+    .tag { display: inline-block; font: 700 11px Montserrat, sans-serif; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+    .tag.ativa { background: rgba(143, 209, 158, .14); color: #8fd19e; }
+    .tag.bloq { background: rgba(224, 122, 106, .16); color: #e07a6a; }
+    .tag.exp { background: rgba(168, 153, 140, .18); color: var(--suave); }
+    .origem { display: block; font-size: 11.5px; color: var(--suave); margin-top: 5px; }
+    .prazo b { color: var(--texto); font-weight: 600; }
+    .prazo small { display: block; color: var(--suave); font-size: 11.5px; margin-top: 3px; }
+    .prazo .trilho { height: 5px; border-radius: 99px; background: rgba(189, 148, 119, .15); margin-top: 6px; width: 120px; overflow: hidden; }
+    .prazo .trilho i { display: block; height: 100%; background: var(--nude); border-radius: 99px; }
+    .prazo.acabando .trilho i { background: #e07a6a; }
+    .uso { font-size: 13px; color: var(--suave); white-space: nowrap; }
+    .uso.ok { color: #8fd19e; }
+    .acao button { background: none; border: 1px solid var(--linha); color: var(--texto); border-radius: 10px; padding: 9px 12px; font: 600 12.5px Montserrat, sans-serif; cursor: pointer; white-space: nowrap; }
+    .acao button.perigo { border-color: rgba(224, 122, 106, .5); color: #e07a6a; }
+    .acao button.confirma { background: #e07a6a; color: #1a0f0a; border-color: #e07a6a; }
+    .acao button.libera { border-color: var(--nude); color: var(--nude); }
+    .vazio { text-align: center; color: var(--suave); padding: 30px 10px; }
+    @media (max-width: 760px) {
+      .kpis { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .kpi { padding: 14px 12px; } .kpi b { font-size: 32px; } .kpi span { font-size: 11.5px; }
+      .liberar { grid-template-columns: 1fr; }
+      thead { display: none; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      tr { background: var(--campo); border: 1px solid var(--linha); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+      td { border: 0; padding: 6px 0; }
+      td[data-l]::before { content: attr(data-l); display: block; font: 600 10px Montserrat, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); margin-bottom: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app"><section class="card"><p class="ajuda">Carregando…</p></section></main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="/app/js/config.js"></script>
+  <script>
+  // ============================================================
+  // ÁREA DE ADMIN — só abre para e-mails da tabela public.admins
+  // ============================================================
+  const $ = (s) => document.querySelector(s);
+  const app = $("#app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DIA = 864e5;
+  const dataBR = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" }) : "—";
+  const ORIGEM = { paid: "Compra Kiwify", order_approved: "Compra Kiwify", manual: "Liberada manualmente", bloqueado: "Bloqueada pelo admin", refunded: "Reembolso", chargedback: "Chargeback", chargeback: "Chargeback" };
+
+  const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  let alunas = [], filtro = "todas", termo = "", eu = null;
+
+  function telaLogin(msg) {
+    app.innerHTML = `
+      <section class="card">
+        <div class="topo"><p class="selo">ÁREA ADMIN</p></div>
+        <h2>Entrar como admin</h2>
+        <p class="ajuda">Use o seu e-mail de admin. Vamos te mandar um link de acesso.</p>
+        <form id="f" class="login" novalidate>
+          <input id="email" type="email" autocomplete="email" placeholder="seu@email.com" required>
+          <button class="btn" id="b" type="submit">Receber link de acesso</button>
+        </form>
+        <div id="m" class="login-msg">${msg || ""}</div>
+      </section>`;
+    $("#f").onsubmit = async (e) => {
+      e.preventDefault();
+      const email = $("#email").value.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) { $("#m").innerHTML = `<p class="erro">Digite um e-mail válido.</p>`; return; }
+      $("#b").disabled = true; $("#b").textContent = "Enviando…";
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/app/admin/", shouldCreateUser: true } });
+      if (error) { $("#b").disabled = false; $("#b").textContent = "Receber link de acesso"; $("#m").innerHTML = `<p class="erro">Não consegui enviar o link. Espere 1 minuto e tente de novo.</p>`; return; }
+      app.innerHTML = `<section class="card"><h2>Confira o seu e-mail</h2><p class="ajuda">Enviamos o link para <b>${esc(email)}</b>. Abra neste mesmo aparelho.</p></section>`;
+    };
+  }
+
+  function semPermissao() {
+    app.innerHTML = `
+      <section class="card">
+        <div class="topo"><p class="selo">ÁREA ADMIN</p></div>
+        <h2>Sem permissão</h2>
+        <p class="ajuda"><b>${esc(eu.email)}</b> não é um e-mail de admin.</p>
+        <div class="acoes"><a class="btn" href="/app/">Ir para o app</a><button class="voltar" id="sair">Sair</button></div>
+      </section>`;
+    $("#sair").onclick = async () => { await sb.auth.signOut(); eu = null; telaLogin(); };
+  }
+
+  function situacao(a) {
+    const agora = Date.now(), exp = a.expira_em ? new Date(a.expira_em).getTime() : null;
+    if (!a.ativo) return "bloq";
+    if (exp && exp <= agora) return "exp";
+    return "ativa";
+  }
+
+  function prazoHtml(a) {
+    if (!a.expira_em) return `<div class="prazo"><b>Sem prazo</b></div>`;
+    const exp = new Date(a.expira_em).getTime(), ini = a.criado_em ? new Date(a.criado_em).getTime() : exp - 365 * DIA;
+    const resta = Math.ceil((exp - Date.now()) / DIA);
+    if (resta <= 0) return `<div class="prazo acabando"><b>Expirou</b><small>em ${dataBR(a.expira_em)}</small></div>`;
+    const pct = Math.max(0, Math.min(100, (exp - Date.now()) / (exp - ini) * 100));
+    return `<div class="prazo ${resta <= 30 ? "acabando" : ""}"><b>${resta} ${resta === 1 ? "dia" : "dias"}</b><small>até ${dataBR(a.expira_em)}</small><div class="trilho"><i style="width:${pct}%"></i></div></div>`;
+  }
+
+  function painel() {
+    const ativas = alunas.filter((a) => situacao(a) === "ativa");
+    const montaram = ativas.filter((a) => a.montou).length;
+    const naoEntraram = ativas.filter((a) => !a.entrou).length;
+
+    let lista = alunas.filter((a) => {
+      const s = situacao(a);
+      if (filtro === "ativas" && s !== "ativa") return false;
+      if (filtro === "nao-entraram" && !(s === "ativa" && !a.entrou)) return false;
+      if (filtro === "inativas" && s === "ativa") return false;
+      if (termo && !(`${a.nome || ""} ${a.email}`.toLowerCase().includes(termo))) return false;
+      return true;
+    });
+
+    const linhas = lista.map((a) => {
+      const s = situacao(a);
+      const tag = s === "ativa" ? `<span class="tag ativa">Ativa</span>` : s === "exp" ? `<span class="tag exp">Expirada</span>` : `<span class="tag bloq">Bloqueada</span>`;
+      const uso = a.montou ? `<span class="uso ok">✓ Montou o plano</span>` : a.entrou ? `<span class="uso">Entrou, não terminou</span>` : `<span class="uso">Ainda não entrou</span>`;
+      const botao = s === "ativa"
+        ? `<button class="perigo" data-bloq="${esc(a.email)}">Bloquear</button>`
+        : `<button class="libera" data-lib="${esc(a.email)}" data-nome="${esc(a.nome || "")}">${s === "exp" ? "Renovar 1 ano" : "Liberar"}</button>`;
+      return `<tr>
+        <td data-l="Aluna"><div class="nome">${esc(a.nome || "Sem nome")}</div><div class="email">${esc(a.email)}</div></td>
+        <td data-l="Compra">${dataBR(a.criado_em)}</td>
+        <td data-l="Status">${tag}<span class="origem">${esc(ORIGEM[a.status] || a.status || "")}</span></td>
+        <td data-l="Acesso">${prazoHtml(a)}</td>
+        <td data-l="Uso">${uso}</td>
+        <td class="acao">${botao}</td>
+      </tr>`;
+    }).join("");
+
+    app.innerHTML = `
+      <section class="card">
+        <div class="adm-topo">
+          <div><p class="selo">ÁREA ADMIN · ${esc(CONFIG.PRODUTO)}</p><h1>Alunas</h1></div>
+          <div class="acoes-linha"><a class="voltar" href="/app/">Ir para o app</a><button class="voltar" id="sair">Sair</button></div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><b>${ativas.length}</b><span>alunas ativas</span></div>
+          <div class="kpi"><b>${montaram}</b><span>já montaram o plano</span></div>
+          <div class="kpi destaque"><b>${naoEntraram}</b><span>ainda não entraram</span></div>
+        </div>
+
+        <form id="fl" class="liberar" novalidate>
+          <input id="le" type="email" placeholder="E-mail da nova aluna" autocomplete="off">
+          <input id="ln" type="text" placeholder="Nome (opcional)" autocomplete="off">
+          <button class="btn" type="submit">Liberar acesso</button>
+        </form>
+        <div id="msg" class="adm-msg"></div>
+
+        <div class="barra-busca">
+          <input class="busca" id="busca" placeholder="Buscar por nome ou e-mail" value="${esc(termo)}">
+          <div class="filtros">
+            ${[["todas", "Todas"], ["ativas", "Ativas"], ["nao-entraram", "Não entraram"], ["inativas", "Bloqueadas/expiradas"]]
+              .map(([k, t]) => `<button data-f="${k}" class="${filtro === k ? "on" : ""}">${t}</button>`).join("")}
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Aluna</th><th>Compra</th><th>Status</th><th>Acesso (365 dias)</th><th>Uso</th><th></th></tr></thead>
+          <tbody>${linhas || `<tr><td colspan="6" class="vazio">Nenhuma aluna aqui.</td></tr>`}</tbody>
+        </table>
+      </section>`;
+
+    $("#sair").onclick = async () => { await sb.auth.signOut(); eu = null; telaLogin(); };
+    $("#busca").oninput = (e) => { termo = e.target.value.trim().toLowerCase(); const pos = e.target.selectionStart; painel(); const b = $("#busca"); b.focus(); b.setSelectionRange(pos, pos); };
+    document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { filtro = b.dataset.f; painel(); }));
+    $("#fl").onsubmit = async (e) => {
+      e.preventDefault();
+      const email = $("#le").value.trim().toLowerCase(), nome = $("#ln").value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(email)) return mensagem("Digite um e-mail válido.", true);
+      await liberar(email, nome);
+    };
+    document.querySelectorAll("[data-lib]").forEach((b) => (b.onclick = () => liberar(b.dataset.lib, b.dataset.nome)));
+    document.querySelectorAll("[data-bloq]").forEach((b) => (b.onclick = async () => {
+      if (!b.classList.contains("confirma")) { b.classList.add("confirma"); b.textContent = "Confirmar bloqueio"; setTimeout(() => { if (b.isConnected) { b.classList.remove("confirma"); b.textContent = "Bloquear"; } }, 4000); return; }
+      b.disabled = true;
+      const { error } = await sb.rpc("admin_bloquear", { p_email: b.dataset.bloq });
+      if (error) return mensagem("Não consegui bloquear agora.", true);
+      await carregar(); mensagem(`${b.dataset.bloq} foi bloqueada.`);
+    }));
+  }
+
+  async function liberar(email, nome) {
+    const { error } = await sb.rpc("admin_liberar", { p_email: email, p_nome: nome || null });
+    if (error) return mensagem("Não consegui liberar agora.", true);
+    await carregar(); mensagem(`Acesso liberado para ${email} por 365 dias.`);
+  }
+
+  function mensagem(t, erro) { const m = $("#msg"); if (m) { m.textContent = t; m.className = "adm-msg " + (erro ? "erro" : "ok"); } }
+
+  async function carregar() {
+    const { data, error } = await sb.rpc("admin_alunas");
+    if (error) { app.innerHTML = `<section class="card"><p class="erro">Não consegui carregar a lista. Recarregue a página.</p></section>`; return; }
+    alunas = data || [];
+    painel();
+  }
+
+  async function entrar(user) {
+    if (eu && eu.id === user.id) return;
+    eu = user;
+    const { data: ok, error } = await sb.rpc("sou_admin");
+    if (error || !ok) return semPermissao();
+    await carregar();
+  }
+
+  (async () => {
+    const { data } = await sb.auth.getSession();
+    if (data.session) entrar(data.session.user); else telaLogin();
+    sb.auth.onAuthStateChange((_ev, session) => { if (session) entrar(session.user); });
+  })();
+  </script>
+</body>
+</html>
